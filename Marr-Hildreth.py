@@ -2,9 +2,8 @@ import cv2
 import numpy as np
 import matplotlib.pyplot as plt
 
-# laplacian_kernel = np.array([[1, 1, 1], [1, -8, 1], [1, 1, 1]])
-laplacian_kernel = np.array([[0, -1, 0], [-1, 4, -1], [0, -1, 0]])
-# valores de kernel tirados de: https://homepages.inf.ed.ac.uk/rbf/HIPR2/log.htm
+laplacian_kernel = np.array([[1, 1, 1], [1, -8, 1], [1, 1, 1]])
+
 
 def apply_convolution(imagem, filtro_de_kernel):
     altura_kernel, largura_kernel = filtro_de_kernel.shape
@@ -88,10 +87,9 @@ def zero_crossing(imagem, threshold):
 
     return bordas
 
-
 sigma = 3.5
 threshold = 0.7
-imagem = cv2.imread("./images/0.jpg", 0)
+imagem = cv2.imread("./images/1.jpg", 0)
 
 g_kernel = gaussian_kernel(sigma)
 blurred = apply_convolution(imagem, g_kernel)
@@ -100,10 +98,10 @@ laplacian = apply_convolution(blurred, laplacian_kernel)
 plt.figure(figsize=(10, 5))
 plt.subplot(1, 2, 1)
 plt.title('Imagem Original')
-plt.imshow(imagem, cmap='gray')
+plt.imshow(imagem)
 
 plt.subplot(1, 2, 2)
 plt.title('Bordas Detectadas')
-plt.imshow(zero_crossing(laplacian, threshold), cmap='gray')
+plt.imshow(zero_crossing(laplacian, threshold))
 
 plt.show()
