@@ -1,4 +1,5 @@
 import numpy as np
+from math import sqrt, atan2
 from PIL import Image
 
 def ler_imagem(caminho):
@@ -17,40 +18,42 @@ def gaussian_kernel(size, sigma):
     k = size // 2
     for i in range(-k, k+1):
         for j in range(-k, k+1):
-            kernel[i+k, j+k] = np.exp(-(i**2 + j**2) / (2 * sigma**2))
+            kernel[i+k, j+k] = (1 / (2 * np.pi * sigma**2)) * np.exp(-(i**2 + j**2) / (2 * sigma**2))
 
-    kernel /= kernel.sum()  
+    soma_total = 0.0
+    for i in range(size):
+        for j in range(size):
+            soma_total += kernel[i, j] 
+
+    for i in range(size):
+        for j in range(size):
+            kernel[i, j] /= soma_total
+
     return kernel
 
-def convolve2d(image, kernel):
-    image_height = len(image)
-    image_width = len(image[0])
-    kernel_height, kernel_width = kernel.shape
-    pad_height = kernel_height // 2
-    pad_width = kernel_width // 2
+def convolução(image, largura, altura, kernel):
+    kernel_altura, kernel_largura = kernel.shape
+    pad_altura = 10 * kernel_altura // 2
+    pad_largura = 10 * kernel_largura // 2
 
-    padded_image = np.zeros((image_height + 2*pad_height, image_width + 2*pad_width))
-    for y in range(image_height):
-        for x in range(image_width):
-            padded_image[y+pad_height, x+pad_width] = image[y][x]
+    padded_image = np.zeros((altura + 2*pad_altura, largura + 2*pad_largura))
+    for y in range(altura):
+        for x in range(largura):
+            padded_image[y+pad_altura, x+pad_largura] = image[y][x]
 
     output = np.zeros_like(image, dtype=np.float32)
 
-    for i in range(image_height):
-        for j in range(image_width):
-            output[i][j] = np.sum(padded_image[i:i+kernel_height, j:j+kernel_width] * kernel)
+    for i in range(altura):
+        for j in range(largura):
+            soma = 0.0
+            for ki in range(kernel_altura):
+                for kj in range(kernel_largura):
+                    soma += padded_image[i + ki, j + kj] * kernel[ki, kj]
+            output[i, j] = soma
 
     return output
 
-
-import numpy as np
-from math import sqrt
-from math import sqrt, atan2, degrees
-
-
 def sobel_filter(image, largura, altura):
-    """Aplica o filtro de Sobel para detectar bordas em uma imagem."""
-    # Kernels de Sobel
     kernel_x = np.array([[-1, 0, 1],
                          [-2, 0, 2],
                          [-1, 0, 1]])
@@ -59,61 +62,45 @@ def sobel_filter(image, largura, altura):
                          [ 0,  0,  0],
                          [ 1,  2,  1]])
 
-    # Inicializa as matrizes para os gradientes
+    altura = len(image)
+    largura = len(image[0])
+
     gx = np.zeros_like(image, dtype=np.float32)
     gy = np.zeros_like(image, dtype=np.float32)
 
-    # Aplica a convolução com os kernels de Sobel
-    for y in range(1, altura - 1):  # Ignora as bordas da imagem
+    for y in range(1, altura - 1):  
         for x in range(1, largura - 1):
             gx[y][x] = (kernel_x[0][0] * image[y-1][x-1] + kernel_x[0][1] * image[y-1][x] + kernel_x[0][2] * image[y-1][x+1] +
                        kernel_x[1][0] * image[y][x-1]   + kernel_x[1][1] * image[y][x]   + kernel_x[1][2] * image[y][x+1] +
                        kernel_x[2][0] * image[y+1][x-1] + kernel_x[2][1] * image[y+1][x] + kernel_x[2][2] * image[y+1][x+1])
 
-            # Gradiente vertical (Gy)
             gy[y][x] = (kernel_y[0][0] * image[y-1][x-1] + kernel_y[0][1] * image[y-1][x] + kernel_y[0][2] * image[y-1][x+1] +
                        kernel_y[1][0] * image[y][x-1]   + kernel_y[1][1] * image[y][x]   + kernel_y[1][2] * image[y][x+1] +
                        kernel_y[2][0] * image[y+1][x-1] + kernel_y[2][1] * image[y+1][x] + kernel_y[2][2] * image[y+1][x+1])
 
-    # Calcula a magnitude do gradiente
     magnitude = np.zeros_like(image, dtype=np.float32)
     for y in range(altura):
         for x in range(largura):
             magnitude[y][x] = sqrt(gx[y][x]**2 + gy[y][x]**2)
 
-    # Normaliza a magnitude para o intervalo [0, 255]
-    magnitude_normalizada = (magnitude / magnitude.max()) * 255
-
     angulos = np.zeros_like(image, dtype=np.float32)
     for y in range(altura):
         for x in range(largura):
-            angulos[y][x] = atan2(gy[y][x], gx[y][x])  # Ângulo em radianos
+            angulos[y][x] = atan2(gy[y][x], gx[y][x]) 
 
     return magnitude, angulos
 
-
 def supressao_nao_maxima(magnitude, angulos):
-    """
-    Aplica a supressão não máxima na matriz de magnitude do gradiente.
-    
-    Parâmetros:
-        magnitude: Matriz de magnitude do gradiente (saída do filtro de Sobel).
-        angulos: Matriz de ângulos do gradiente (direção do gradiente).
-    
-    Retorna:
-        Matriz com as bordas afinadas após a supressão não máxima.
-    """
+
     altura, largura = magnitude.shape
     supressao = np.zeros_like(magnitude, dtype=np.float32)
 
-    # Converte os ângulos para graus (0 a 180)
     angulos = np.rad2deg(angulos) % 180
 
     for y in range(1, altura - 1):
         for x in range(1, largura - 1):
             direcao = angulos[y][x]
 
-            # Determina os pixels vizinhos na direção do gradiente
             if (0 <= direcao < 22.5) or (157.5 <= direcao <= 180):
                 vizinho1 = magnitude[y][x + 1]
                 vizinho2 = magnitude[y][x - 1]
@@ -127,7 +114,6 @@ def supressao_nao_maxima(magnitude, angulos):
                 vizinho1 = magnitude[y - 1][x - 1]
                 vizinho2 = magnitude[y + 1][x + 1]
 
-            # Supressão não máxima: mantém apenas os máximos locais
             if magnitude[y][x] >= vizinho1 and magnitude[y][x] >= vizinho2:
                 supressao[y][x] = magnitude[y][x]
             else:
@@ -136,51 +122,59 @@ def supressao_nao_maxima(magnitude, angulos):
     return supressao
 
 def dupla_limiarizacao_conectividade(magnitude, limiar_baixo, limiar_alto):
+
     altura, largura = magnitude.shape
     bordas_fortes = np.zeros_like(magnitude, dtype=np.uint8)
     bordas_fracas = np.zeros_like(magnitude, dtype=np.uint8)
 
-    # Dupla limiarização
     for y in range(altura):
         for x in range(largura):
             valor = magnitude[y][x]
             if valor >= limiar_alto:
-                bordas_fortes[y][x] = 255  # Borda forte
+                bordas_fortes[y][x] = 255 
             elif valor >= limiar_baixo:
-                bordas_fracas[y][x] = 255  # Borda fraca
+                bordas_fracas[y][x] = 255  
 
-    # Análise de conectividade com vizinhança 5x5
-    for y in range(2, altura - 2):
-        for x in range(2, largura - 2):
-            if bordas_fracas[y][x] == 255:  # Se for uma borda fraca
-                # Verifica se está conectada a uma borda forte na vizinhança 5x5
-                if np.any(bordas_fortes[y-2:y+3, x-2:x+3] == 255):
-                    bordas_fortes[y][x] = 255  # Converte borda fraca em forte
+    for y in range(1, altura - 1):
+        for x in range(1, largura - 1):
+            if bordas_fracas[y][x] == 255: 
+                found = False
+                for dy in range(-1, 2):  
+                    for dx in range(-1, 2): 
+                        if bordas_fortes[y + dy][x + dx] == 255:
+                            found = True
+                            break
+                    if found:
+                        break
+                if found:
+                    bordas_fortes[y][x] = 255
 
     return bordas_fortes
 
-def salva_imagem(matriz, largura, altura, caminho_saida):
-    from PIL import Image
 
-    imagem = Image.new("L", (largura, altura))
-    
-    for y in range(altura):
-        for x in range(largura):
-            valor = int(matriz[y][x])
-            valor = max(0, min(valor, 255)) 
-            imagem.putpixel((x, y), valor)
-    
-    imagem.save(caminho_saida)
+caminho_imagem = "images/0.jpg" 
+matriz_imagem, largura, altura = ler_imagem(caminho_imagem)
 
-
-matriz_imagem, largura, altura = ler_imagem( "./images/1.jpg"  )
 matriz_imagem = np.array(matriz_imagem, dtype=np.float32)
 
-blurred_image = convolve2d(matriz_imagem, gaussian_kernel(7, 1.5))
-sobel_image, angulos = sobel_filter(blurred_image, largura, altura)
-nms_image = supressao_nao_maxima(sobel_image, angulos)
-limiar_baixo = 50  # Defina o limiar baixo
-limiar_alto = 100  # Defina o limiar alto
-bordas_finais = dupla_limiarizacao_conectividade(nms_image, limiar_baixo, limiar_alto)
+blurred_image = convolução(matriz_imagem, largura, altura, gaussian_kernel(7, 1.0))
+magnitude, angulos = sobel_filter(blurred_image, largura, altura)
+bordas_finas = supressao_nao_maxima(magnitude, angulos)
 
-salva_imagem(bordas_finais, largura, altura ,"out.jpg")
+limiar_baixo = 30 
+limiar_alto = 100  
+bordas_finais = dupla_limiarizacao_conectividade(bordas_finas, limiar_baixo, limiar_alto)
+
+import matplotlib.pyplot as plt
+
+plt.figure(figsize=(10, 5))
+
+plt.subplot(1, 2, 1)
+plt.title('Imagem Original')
+plt.imshow(matriz_imagem, cmap='gray')
+
+plt.subplot(1, 2, 2)
+plt.title('Bordas Detectadas')
+plt.imshow(bordas_finais, cmap='gray')
+
+plt.show()

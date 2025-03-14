@@ -2,8 +2,7 @@ import cv2
 import numpy as np
 import matplotlib.pyplot as plt
 
-laplacian_kernel = np.array([[1, 1, 1], [1, -8, 1], [1, 1, 1]])
-
+laplacian_kernel = np.array([[0, -1, 0], [-1, 4, -1], [0, -1, 0]])
 
 def apply_convolution(imagem, filtro_de_kernel):
     altura_kernel, largura_kernel = filtro_de_kernel.shape
@@ -87,9 +86,22 @@ def zero_crossing(imagem, threshold):
 
     return bordas
 
+def LerImagen(caminho):
+
+    from PIL import Image
+    imagem = Image.open(caminho).convert("L")
+    largura, altura = imagem.size
+    matriz = [[0 for _ in range(largura)] for _ in range(altura)]
+    
+    for y in range(altura):
+        for x in range(largura):
+            matriz[y][x] = 1 if imagem.getpixel((x, y)) > 128 else 0
+    
+    return matriz, largura, altura
+
 sigma = 3.5
 threshold = 0.7
-imagem = cv2.imread("./images/1.jpg", 0)
+imagem = cv2.imread("./images/0.jpg", 0)
 
 g_kernel = gaussian_kernel(sigma)
 blurred = apply_convolution(imagem, g_kernel)
