@@ -7,10 +7,10 @@ def ler_imagem(caminho):
     return np.array(imagem)  
 
 def otsu_thresholding(imagem):
-    histograma, _ = np.histogram(imagem, bins=256, range=(0, 256))  
+    histograma, _ = np.histogram(imagem, bins=255, range=(0, 255))  
     total_pixels = imagem.size
 
-    Sum = np.sum([i * histograma[i] for i in range(256)])
+    Sum = np.sum([i * histograma[i] for i in range(255)])
     Sumb = 0  
     wb = 0  
     MaxVar = 128
