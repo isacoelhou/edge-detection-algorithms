@@ -152,7 +152,7 @@ def dupla_limiarizacao_conectividade(magnitude, limiar_baixo, limiar_alto):
     return bordas_fortes
 
 
-caminho_imagem = "images/0.jpg" 
+caminho_imagem = "../images/0.jpg" 
 matriz_imagem, largura, altura = ler_imagem(caminho_imagem)
 
 matriz_imagem = np.array(matriz_imagem, dtype=np.float32)
