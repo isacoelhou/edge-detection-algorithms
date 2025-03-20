@@ -43,6 +43,36 @@ def Otsu():
     
     return imagem_segmentada
 
+def Watershed():
+    imagem = canny()
+    imagem = inundar(imagem, 1, 1, 0, 2)
+
+    return imagem
+
+
+def inundar(imagem, x, y, cor_alvo, nova_cor):
+    # Se a cor inicial já for a nova cor, não há necessidade de preencher
+    if imagem[x][y] != cor_alvo or imagem[x][y] == nova_cor:
+        return
+
+    # Criar uma pilha para armazenar os pixels a serem processados
+    stack = [(x, y)]
+
+    # Percorrer a pilha até que todos os pixels conectados sejam preenchidos
+    while stack:
+        cx, cy = stack.pop()  # Pegamos o último elemento da pilha
+
+        # Se estiver dentro dos limites da imagem e for da cor alvo, preenchemos
+        if 0 <= cx < len(imagem) and 0 <= cy < len(imagem[0]) and imagem[cx][cy] == cor_alvo:
+            imagem[cx][cy] = nova_cor  # Preenche o pixel
+
+            # Adicionamos os vizinhos na pilha para serem processados depois
+            stack.append((cx + 1, cy))  # Direita
+            stack.append((cx - 1, cy))  # Esquerda
+            stack.append((cx, cy + 1))  # Baixo
+            stack.append((cx, cy - 1))  # Cima
+
+
 def ler_imagem_canny(caminho):
     imagem = Image.open(caminho).convert("L")  
     largura, altura = imagem.size
@@ -307,22 +337,30 @@ def otsu_thresholding(imagem):
 
     return Limiar
 
-imagem_canny = canny()
-imagem_marr = Marr()
-imagem_otsu = Otsu()
+# imagem_canny = canny()
+# imagem_marr = Marr()
+# imagem_otsu = Otsu()
+imagem_water = Watershed()
+
+imagem_water = np.array(imagem_water, dtype=np.uint8)
+for i, linha in enumerate(imagem_water):
+    for j, pixel in enumerate(linha):
+        if pixel is None:
+            print(f"Valor None encontrado em ({i}, {j})")
+
 
 plt.figure(figsize=(15, 5))
 
-plt.subplot(1, 3, 1)  # Primeira posição
-plt.imshow(imagem_canny, cmap="gray")
-plt.title("Canny")
+# plt.subplot(1, 3, 1)  # Primeira posição
+# plt.imshow(imagem_canny, cmap="gray")
+# plt.title("Canny")
 
-plt.subplot(1, 3, 2)  # Segunda posição
-plt.imshow(imagem_marr, cmap="gray")
-plt.title("Marr-Hildreth")
+# plt.subplot(1, 3, 2)  # Segunda posição
+# plt.imshow(imagem_marr, cmap="gray")
+# plt.title("Marr-Hildreth")
 
 plt.subplot(1, 3, 3)  # Terceira posição
-plt.imshow(imagem_otsu, cmap="gray")
+plt.imshow(imagem_water, cmap="gray")
 plt.title("Otsu")
 
 plt.show()
